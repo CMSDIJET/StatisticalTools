@@ -2,6 +2,13 @@
 
 import sys, os, copy, re
 from argparse import ArgumentParser
+import ROOT
+
+if not os.path.exists(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so")):
+    ROOT.gROOT.ProcessLine(".L " + os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer.cc")+"+")
+else:
+    ROOT.gSystem.Load(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so"))
+
 
 theta_template = """files = ['theta_DUMMY_JOB.root']
 
@@ -109,6 +116,8 @@ def main():
 
     parser.add_argument("--fixBkg", dest="fixBkg", default=False, action="store_true", help="Fix all background parameters")
 
+    parser.add_argument("--decoBkg", dest="decoBkg", default=False, action="store_true", help="Decorrelate background parameters")
+
     parser.add_argument("--fitStrategy", dest="fitStrategy", type=int, default=1, help="Fit strategy (default: %(default).1f)")
 
     parser.add_argument("--theta", dest="theta", default=False, action="store_true", help="Produce histograms for the theta limit setting framework")
@@ -159,7 +168,7 @@ def main():
 
     # import ROOT stuff
     from ROOT import TFile, TH1F, TH1D, TGraph, kTRUE, kFALSE
-    from ROOT import RooRealVar, RooDataHist, RooArgList, RooArgSet, RooAddPdf, RooFit, RooGenericPdf, RooWorkspace, RooMsgService, RooHistPdf
+    from ROOT import RooRealVar, RooDataHist, RooArgList, RooArgSet, RooAddPdf, RooFit, RooGenericPdf, RooWorkspace, RooMsgService, RooHistPdf, PdfDiagonalizer
 
     if not args.debug:
         RooMsgService.instance().setSilentMode(kTRUE)
@@ -190,7 +199,7 @@ def main():
         # get signal shape
         hSig = inputSig.Get( "h_" + args.final_state + "_" + str(int(mass)) )
         # normalize signal shape to the expected event yield (works even if input shapes are not normalized to unity)
-        hSig.Scale(signalCrossSection*lumi/hSig.Integral())#divide by a number that provides roughly an r value of 1-10
+        hSig.Scale(signalCrossSection*lumi/hSig.Integral()) # divide by a number that provides roughly an r value of 1-10
 
         rooSigHist = RooDataHist('rooSigHist','rooSigHist',RooArgList(mjj),hSig)
         rooSigHist.Print()
@@ -208,7 +217,7 @@ def main():
         background = RooGenericPdf('background','(pow(1-@0/%.1f,@1)/pow(@0/%.1f,@2+@3*log(@0/%.1f)))'%(sqrtS,sqrtS,sqrtS),RooArgList(mjj,p1,p2,p3))
         background.Print()
         dataInt = hData.Integral(hData.GetXaxis().FindBin(float(args.massMin)),hData.GetXaxis().FindBin(float(args.massMax)))
-        background_norm = RooRealVar('background_norm','background_norm',dataInt,0.,1e+07)
+        background_norm = RooRealVar('background_norm','background_norm',dataInt,0.,1e+08)
         background_norm.Print()
 
         # S+B model
@@ -219,13 +228,52 @@ def main():
 
         if args.runFit:
             res = model.fitTo(rooDataHist, RooFit.Save(kTRUE), RooFit.Strategy(args.fitStrategy))
-            res.Print()
+            if not args.decoBkg: res.Print()
 
+            # decorrelated background parameters for Bayesian limits
+            if args.decoBkg:
+                signal_norm.setConstant()
+                res = model.fitTo(rooDataHist, RooFit.Save(kTRUE), RooFit.Strategy(args.fitStrategy))
+                res.Print()
+                ## temp workspace for the PDF diagonalizer
+                w_tmp = RooWorkspace("w_tmp")
+                deco = PdfDiagonalizer("deco",w_tmp,res)
+                # here diagonalizing only the shape parameters since the overall normalization is already decorrelated
+                background_deco = deco.diagonalize(background)
+                print "##################### workspace for decorrelation"
+                w_tmp.Print("v")
+                print "##################### original parameters"
+                background.getParameters(rooDataHist).Print("v")
+                print "##################### decorrelated parameters"
+                # needed if want to evaluate limits without background systematics
+                if args.fixBkg:
+                    w_tmp.var("deco_eig1").setConstant()
+                    w_tmp.var("deco_eig2").setConstant()
+                    if not args.fixP3: w_tmp.var("deco_eig3").setConstant()
+                background_deco.getParameters(rooDataHist).Print("v")
+                print "##################### original pdf"
+                background.Print()
+                print "##################### decorrelated pdf"
+                background_deco.Print()
+                # release signal normalization
+                signal_norm.setConstant(kFALSE)
+                # set the background normalization range to +/- 5 sigma
+                bkg_val = background_norm.getVal()
+                bkg_error = background_norm.getError()
+                background_norm.setMin(bkg_val-5*bkg_error)
+                background_norm.setMax(bkg_val+5*bkg_error)
+                background_norm.Print()
+                # change background PDF names
+                background.SetName("background_old")
+                background_deco.SetName("background")
+
+        # needed if want to evaluate limits without background systematics
         if args.fixBkg:
-          background_norm.setConstant()
-          p1.setConstant()
-          p2.setConstant()
-          p3.setConstant()
+            background_norm.setConstant()
+            p1.setConstant()
+            p2.setConstant()
+            p3.setConstant()
+
         # -----------------------------------------
         # dictionaries holding systematic variations of the signal shape
         hSig_Syst = {}
@@ -300,8 +348,11 @@ def main():
         if args.jerUnc != None:
             getattr(w,'import')(hSig_Syst_DataHist['JERUp'],RooFit.Rename("signal__JERUp"))
             getattr(w,'import')(hSig_Syst_DataHist['JERDown'],RooFit.Rename("signal__JERDown"))
-        getattr(w,'import')(background)
-        getattr(w,'import')(background_norm)
+        if args.decoBkg:
+            getattr(w,'import')(background_deco,RooFit.Rename("background"))
+        else:
+            getattr(w,'import')(background,RooFit.Rename("background"))
+        getattr(w,'import')(background_norm,RooFit.Rename("background_norm"))
         getattr(w,'import')(rooDataHist,RooFit.Rename("data_obs"))
         w.Print()
         w.writeToFile(os.path.join(args.output_path,wsName))
@@ -331,9 +382,14 @@ def main():
             datacard.write('JER  shape   1          -\n')
         # flat parameters --- flat prior
         datacard.write('background_norm  flatParam\n')
-        datacard.write('p1  flatParam\n')
-        datacard.write('p2  flatParam\n')
-        if not args.fixP3: datacard.write('p3  flatParam\n')
+        if args.decoBkg:
+            datacard.write('deco_eig1  flatParam\n')
+            datacard.write('deco_eig2  flatParam\n')
+            if not args.fixP3: datacard.write('deco_eig3  flatParam\n')
+        else:
+            datacard.write('p1  flatParam\n')
+            datacard.write('p2  flatParam\n')
+            if not args.fixP3: datacard.write('p3  flatParam\n')
         datacard.close()
 
         # -----------------------------------------
@@ -405,7 +461,7 @@ def main():
             theta_file.write(theta_content)
             theta_file.close()
 
-    print '>> Datacards and workspaces created and stored in %s/.'%( os.path.join(os.getcwd(),args.output_path) )
+    print '>> Datacards and workspaces created and stored in %s/'%( os.path.join(os.getcwd(),args.output_path) )
 
 
 if __name__ == '__main__':
