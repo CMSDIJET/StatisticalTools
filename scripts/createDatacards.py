@@ -205,6 +205,7 @@ def main():
 
         rooSigHist = RooDataHist('rooSigHist','rooSigHist',RooArgList(mjj),hSig)
         rooSigHist.Print()
+        print 'Signal acceptance:', (rooSigHist.sumEntries()/hSig.Integral())
         signal = RooHistPdf('signal','signal',RooArgSet(mjj),rooSigHist)
         signal.Print()
         signal_norm = RooRealVar('signal_norm','signal_norm',0,-1e+04,1e+04)
