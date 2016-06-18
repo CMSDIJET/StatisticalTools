@@ -126,6 +126,8 @@ def main():
 
     parser.add_argument("--debug", dest="debug", default=False, action="store_true", help="Debug printout")
 
+    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the output file names (default: %(default)s)")
+
     mass_group = parser.add_mutually_exclusive_group(required=True)
     mass_group.add_argument("--mass",
                             type=int,
@@ -337,8 +339,9 @@ def main():
 
         # -----------------------------------------
         # create a datacard and corresponding workspace
-        dcName = 'datacard_' + args.final_state + '_m' + str(mass) + '.txt'
-        wsName = 'workspace_' + args.final_state + '_m' + str(mass) + '.root'
+        postfix = (('_' + args.postfix) if args.postfix != '' else '')
+        dcName = 'datacard_' + args.final_state + '_m' + str(mass) + postfix + '.txt'
+        wsName = 'workspace_' + args.final_state + '_m' + str(mass) + postfix + '.root'
 
         w = RooWorkspace('w','workspace')
         getattr(w,'import')(rooSigHist,RooFit.Rename("signal"))

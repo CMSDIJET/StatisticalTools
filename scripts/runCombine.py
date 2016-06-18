@@ -90,6 +90,8 @@ def main():
 
     parser.add_argument("--condor", dest="condor", default=False, action="store_true", help="Batch process using Condor")
 
+    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the input and output file names (default: %(default)s)")
+
     mass_group = parser.add_mutually_exclusive_group(required=True)
     mass_group.add_argument("--mass",
                             type=int,
@@ -160,6 +162,8 @@ def main():
     elif method == 'MaxLikelihoodFit':
         prefix = 'signal_xs'
 
+    postfix = (('_' + args.postfix) if args.postfix != '' else '')
+
     datacards_path = os.path.join(os.getcwd(), args.datacards_path)
     output_path = os.path.join(os.getcwd(), args.output_path)
     condor_path = os.path.join(output_path, 'condor')
@@ -172,11 +176,11 @@ def main():
 
     for mass in masses:
 
-        logName = '%s_%s_%s_m%i.log'%(prefix, method, args.final_state, int(mass))
+        logName = '%s_%s_%s_m%i%s.log'%(prefix, method, args.final_state, int(mass), postfix)
 
-        run_options = options + ' --name _%s_m%i --mass %i'%(args.final_state,int(mass),int(mass))
+        run_options = options + ' --name _%s_m%i%s --mass %i'%(args.final_state,int(mass),postfix,int(mass))
 
-        cmd = "combine -M %s %s datacard_%s_m%i.txt | tee %s"%(method,run_options,args.final_state,int(mass),os.path.join(('' if args.condor else output_path),logName))
+        cmd = "combine -M %s %s datacard_%s_m%i%s.txt | tee %s"%(method,run_options,args.final_state,int(mass),postfix,os.path.join(('' if args.condor else output_path),logName))
 
         # if using Condor
         if args.condor:
@@ -186,14 +190,14 @@ def main():
 
             # create the jdl file
             jdl_content = jdl_template
-            jdl_content = re.sub('DUMMY_JOB','%s_%s_m%i'%(method,args.final_state,int(mass)),jdl_content)
+            jdl_content = re.sub('DUMMY_JOB','%s_%s_m%i%s'%(method,args.final_state,int(mass),postfix),jdl_content)
             jdl_content = re.sub('DUMMY_OUTPUTDIR',os.getcwd(),jdl_content)
             files_to_transfer = []
-            files_to_transfer.append( os.path.join(datacards_path, 'datacard_%s_m%i.txt'%(args.final_state,int(mass))) )
-            files_to_transfer.append( os.path.join(datacards_path, 'workspace_%s_m%i.root'%(args.final_state,int(mass))) )
+            files_to_transfer.append( os.path.join(datacards_path, 'datacard_%s_m%i%s.txt'%(args.final_state,int(mass),postfix)) )
+            files_to_transfer.append( os.path.join(datacards_path, 'workspace_%s_m%i%s.root'%(args.final_state,int(mass),postfix)) )
             jdl_content = re.sub('DUMMY_FILES',', '.join(files_to_transfer),jdl_content)
 
-            jdl_file = open(os.path.join(condor_path,'run_%s_%s_m%i.jdl'%(method,args.final_state,int(mass))),'w')
+            jdl_file = open(os.path.join(condor_path,'run_%s_%s_m%i%s.jdl'%(method,args.final_state,int(mass),postfix)),'w')
             jdl_file.write(jdl_content)
             jdl_file.close()
 
@@ -201,13 +205,13 @@ def main():
             bash_content = bash_template
             bash_content = re.sub('DUMMY_CMD',cmd,bash_content)
 
-            bash_script = open(os.path.join(condor_path,'run_%s_%s_m%i.sh'%(method,args.final_state,int(mass))),'w')
+            bash_script = open(os.path.join(condor_path,'run_%s_%s_m%i%s.sh'%(method,args.final_state,int(mass),postfix)),'w')
             bash_script.write(bash_content)
             bash_script.close()
 
             print ">> Submitting job for %s resonance with m = %i GeV..."%(args.final_state, int(mass))
             print "---------------------------------------------------------------------------"
-            condor_cmd = 'condor_submit condor/run_%s_%s_m%i.jdl'%(method,args.final_state,int(mass))
+            condor_cmd = 'condor_submit condor/run_%s_%s_m%i%s.jdl'%(method,args.final_state,int(mass),postfix)
             print "Running: " + condor_cmd + "\n"
             os.system(condor_cmd)
         else:
