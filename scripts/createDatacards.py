@@ -2,12 +2,6 @@
 
 import sys, os, copy, re
 from argparse import ArgumentParser
-import ROOT
-
-if not os.path.exists(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so")):
-    ROOT.gROOT.ProcessLine(".L " + os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer.cc")+"+")
-else:
-    ROOT.gSystem.Load(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so"))
 
 
 theta_template = """files = ['theta_DUMMY_JOB.root']
@@ -118,7 +112,7 @@ def main():
 
     parser.add_argument("--decoBkg", dest="decoBkg", default=False, action="store_true", help="Decorrelate background parameters")
 
-    parser.add_argument("--fitStrategy", dest="fitStrategy", type=int, default=1, help="Fit strategy (default: %(default).1f)")
+    parser.add_argument("--fitStrategy", dest="fitStrategy", type=int, default=1, help="Fit strategy (default: %(default)i)")
 
     parser.add_argument("--theta", dest="theta", default=False, action="store_true", help="Produce histograms for the theta limit setting framework")
 
@@ -126,7 +120,7 @@ def main():
 
     parser.add_argument("--debug", dest="debug", default=False, action="store_true", help="Debug printout")
 
-    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the output file names (default: %(default)s)")
+    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the output file names (default: \"%(default)s\")")
 
     mass_group = parser.add_mutually_exclusive_group(required=True)
     mass_group.add_argument("--mass",
@@ -169,26 +163,31 @@ def main():
     masses.sort()
 
     # import ROOT stuff
-    from ROOT import TFile, TH1F, TH1D, TGraph, kTRUE, kFALSE
-    from ROOT import RooRealVar, RooDataHist, RooArgList, RooArgSet, RooAddPdf, RooFit, RooGenericPdf, RooWorkspace, RooMsgService, RooHistPdf, PdfDiagonalizer
+    import ROOT
+
+    if args.decoBkg:
+        if not os.path.exists(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so")):
+            ROOT.gROOT.ProcessLine(".L " + os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer.cc")+"+")
+        else:
+            ROOT.gSystem.Load(os.path.join(os.environ["CMSSW_BASE"],"src/HiggsAnalysis/CombinedLimit/src/PdfDiagonalizer_cc.so"))
 
     if not args.debug:
-        RooMsgService.instance().setSilentMode(kTRUE)
-        RooMsgService.instance().setStreamStatus(0,kFALSE)
-        RooMsgService.instance().setStreamStatus(1,kFALSE)
+        ROOT.RooMsgService.instance().setSilentMode(ROOT.kTRUE)
+        ROOT.RooMsgService.instance().setStreamStatus(0,ROOT.kFALSE)
+        ROOT.RooMsgService.instance().setStreamStatus(1,ROOT.kFALSE)
 
     # input data file
-    inputData = TFile(args.inputData)
+    inputData = ROOT.TFile(args.inputData)
     # input data histogram
     hData = inputData.Get(args.dataHistname)
 
     # input sig file
-    inputSig = TFile(args.inputSig)
+    inputSig = ROOT.TFile(args.inputSig)
 
     sqrtS = args.sqrtS
 
     # mass variable
-    mjj = RooRealVar('mjj','mjj',float(args.massMin),float(args.massMax))
+    mjj = ROOT.RooRealVar('mjj','mjj',float(args.massMin),float(args.massMax))
 
     # integrated luminosity and signal cross section
     lumi = args.lumi
@@ -203,52 +202,54 @@ def main():
         # normalize signal shape to the expected event yield (works even if input shapes are not normalized to unity)
         hSig.Scale(signalCrossSection*lumi/hSig.Integral()) # divide by a number that provides roughly an r value of 1-10
 
-        rooSigHist = RooDataHist('rooSigHist','rooSigHist',RooArgList(mjj),hSig)
+        rooSigHist = ROOT.RooDataHist('rooSigHist','rooSigHist',ROOT.RooArgList(mjj),hSig)
         rooSigHist.Print()
         print 'Signal acceptance:', (rooSigHist.sumEntries()/hSig.Integral())
-        signal = RooHistPdf('signal','signal',RooArgSet(mjj),rooSigHist)
+        signal = ROOT.RooHistPdf('signal','signal',ROOT.RooArgSet(mjj),rooSigHist)
         signal.Print()
-        signal_norm = RooRealVar('signal_norm','signal_norm',0,-1e+04,1e+04)
+        signal_norm = ROOT.RooRealVar('signal_norm','signal_norm',0,-1e+04,1e+04)
         if args.fitBonly: signal_norm.setConstant()
         signal_norm.Print()
 
-        p1 = RooRealVar('p1','p1',args.p1,0.,100.)
-        p2 = RooRealVar('p2','p2',args.p2,0.,60.)
-        p3 = RooRealVar('p3','p3',args.p3,-10.,10.)
+        p1 = ROOT.RooRealVar('p1','p1',args.p1,0.,100.)
+        p2 = ROOT.RooRealVar('p2','p2',args.p2,0.,60.)
+        p3 = ROOT.RooRealVar('p3','p3',args.p3,-10.,10.)
         if args.fixP3: p3.setConstant()
 
-        background = RooGenericPdf('background','(pow(1-@0/%.1f,@1)/pow(@0/%.1f,@2+@3*log(@0/%.1f)))'%(sqrtS,sqrtS,sqrtS),RooArgList(mjj,p1,p2,p3))
+        background = ROOT.RooGenericPdf('background','(pow(1-@0/%.1f,@1)/pow(@0/%.1f,@2+@3*log(@0/%.1f)))'%(sqrtS,sqrtS,sqrtS),ROOT.RooArgList(mjj,p1,p2,p3))
         background.Print()
         dataInt = hData.Integral(hData.GetXaxis().FindBin(float(args.massMin)),hData.GetXaxis().FindBin(float(args.massMax)))
-        background_norm = RooRealVar('background_norm','background_norm',dataInt,0.,1e+08)
+        background_norm = ROOT.RooRealVar('background_norm','background_norm',dataInt,0.,dataInt+20.*ROOT.TMath.Sqrt(dataInt))
         background_norm.Print()
 
         # S+B model
-        model = RooAddPdf("model","s+b",RooArgList(background,signal),RooArgList(background_norm,signal_norm))
+        model = ROOT.RooAddPdf("model","s+b",ROOT.RooArgList(background,signal),ROOT.RooArgList(background_norm,signal_norm))
 
-        rooDataHist = RooDataHist('rooDatahist','rooDathist',RooArgList(mjj),hData)
+        rooDataHist = ROOT.RooDataHist('rooDatahist','rooDathist',ROOT.RooArgList(mjj),hData)
         rooDataHist.Print()
 
         if args.runFit:
-            res = model.fitTo(rooDataHist, RooFit.Save(kTRUE), RooFit.Strategy(args.fitStrategy))
+            res = model.fitTo(rooDataHist, ROOT.RooFit.Save(ROOT.kTRUE), ROOT.RooFit.Strategy(args.fitStrategy))
             if not args.decoBkg: res.Print()
 
             # decorrelated background parameters for Bayesian limits
             if args.decoBkg:
                 signal_norm.setConstant()
-                res = model.fitTo(rooDataHist, RooFit.Save(kTRUE), RooFit.Strategy(args.fitStrategy))
+                res = model.fitTo(rooDataHist, ROOT.RooFit.Save(ROOT.kTRUE), ROOT.RooFit.Strategy(args.fitStrategy))
                 res.Print()
                 ## temp workspace for the PDF diagonalizer
-                w_tmp = RooWorkspace("w_tmp")
-                deco = PdfDiagonalizer("deco",w_tmp,res)
+                w_tmp = ROOT.RooWorkspace("w_tmp")
+                deco = ROOT.PdfDiagonalizer("deco",w_tmp,res)
                 # here diagonalizing only the shape parameters since the overall normalization is already decorrelated
                 background_deco = deco.diagonalize(background)
+                # fix the eigen parameter corresponding to the overall normalization
+                w_tmp.var("deco_eig0").setConstant()
                 print "##################### workspace for decorrelation"
                 w_tmp.Print("v")
                 print "##################### original parameters"
                 background.getParameters(rooDataHist).Print("v")
                 print "##################### decorrelated parameters"
-                # needed if want to evaluate limits without background systematics
+                # if want to fix background parameters
                 if args.fixBkg:
                     w_tmp.var("deco_eig1").setConstant()
                     w_tmp.var("deco_eig2").setConstant()
@@ -259,7 +260,7 @@ def main():
                 print "##################### decorrelated pdf"
                 background_deco.Print()
                 # release signal normalization
-                signal_norm.setConstant(kFALSE)
+                signal_norm.setConstant(ROOT.kFALSE)
                 # set the background normalization range to +/- 5 sigma
                 bkg_val = background_norm.getVal()
                 bkg_error = background_norm.getError()
@@ -270,7 +271,7 @@ def main():
                 background.SetName("background_old")
                 background_deco.SetName("background")
 
-        # needed if want to evaluate limits without background systematics
+        # if want to fix background parameters
         if args.fixBkg:
             background_norm.setConstant()
             p1.setConstant()
@@ -281,7 +282,7 @@ def main():
         # dictionaries holding systematic variations of the signal shape
         hSig_Syst = {}
         hSig_Syst_DataHist = {}
-        sigCDF = TGraph(hSig.GetNbinsX()+1)
+        sigCDF = ROOT.TGraph(hSig.GetNbinsX()+1)
 
         # JES and JER uncertainties
         if args.jesUnc != None or args.jerUnc != None:
@@ -319,8 +320,8 @@ def main():
                 xLowPrime = jes*xLow
                 xUpPrime = jes*xUp
                 hSig_Syst['JESDown'].SetBinContent(i, sigCDF.Eval(xUpPrime) - sigCDF.Eval(xLowPrime))
-            hSig_Syst_DataHist['JESUp'] = RooDataHist('hSig_JESUp','hSig_JESUp',RooArgList(mjj),hSig_Syst['JESUp'])
-            hSig_Syst_DataHist['JESDown'] = RooDataHist('hSig_JESDown','hSig_JESDown',RooArgList(mjj),hSig_Syst['JESDown'])
+            hSig_Syst_DataHist['JESUp'] = ROOT.RooDataHist('hSig_JESUp','hSig_JESUp',ROOT.RooArgList(mjj),hSig_Syst['JESUp'])
+            hSig_Syst_DataHist['JESDown'] = ROOT.RooDataHist('hSig_JESDown','hSig_JESDown',ROOT.RooArgList(mjj),hSig_Syst['JESDown'])
 
         # produce JER signal shapes
         if args.jesUnc != None:
@@ -335,8 +336,8 @@ def main():
                 xLowPrime = jer*(xLow-float(mass))+float(mass)
                 xUpPrime = jer*(xUp-float(mass))+float(mass)
                 hSig_Syst['JERDown'].SetBinContent(i, sigCDF.Eval(xUpPrime) - sigCDF.Eval(xLowPrime))
-            hSig_Syst_DataHist['JERUp'] = RooDataHist('hSig_JERUp','hSig_JERUp',RooArgList(mjj),hSig_Syst['JERUp'])
-            hSig_Syst_DataHist['JERDown'] = RooDataHist('hSig_JERDown','hSig_JERDown',RooArgList(mjj),hSig_Syst['JERDown'])
+            hSig_Syst_DataHist['JERUp'] = ROOT.RooDataHist('hSig_JERUp','hSig_JERUp',ROOT.RooArgList(mjj),hSig_Syst['JERUp'])
+            hSig_Syst_DataHist['JERDown'] = ROOT.RooDataHist('hSig_JERDown','hSig_JERDown',ROOT.RooArgList(mjj),hSig_Syst['JERDown'])
 
         # -----------------------------------------
         # create a datacard and corresponding workspace
@@ -344,20 +345,20 @@ def main():
         dcName = 'datacard_' + args.final_state + '_m' + str(mass) + postfix + '.txt'
         wsName = 'workspace_' + args.final_state + '_m' + str(mass) + postfix + '.root'
 
-        w = RooWorkspace('w','workspace')
-        getattr(w,'import')(rooSigHist,RooFit.Rename("signal"))
+        w = ROOT.RooWorkspace('w','workspace')
+        getattr(w,'import')(rooSigHist,ROOT.RooFit.Rename("signal"))
         if args.jesUnc != None:
-            getattr(w,'import')(hSig_Syst_DataHist['JESUp'],RooFit.Rename("signal__JESUp"))
-            getattr(w,'import')(hSig_Syst_DataHist['JESDown'],RooFit.Rename("signal__JESDown"))
+            getattr(w,'import')(hSig_Syst_DataHist['JESUp'],ROOT.RooFit.Rename("signal__JESUp"))
+            getattr(w,'import')(hSig_Syst_DataHist['JESDown'],ROOT.RooFit.Rename("signal__JESDown"))
         if args.jerUnc != None:
-            getattr(w,'import')(hSig_Syst_DataHist['JERUp'],RooFit.Rename("signal__JERUp"))
-            getattr(w,'import')(hSig_Syst_DataHist['JERDown'],RooFit.Rename("signal__JERDown"))
+            getattr(w,'import')(hSig_Syst_DataHist['JERUp'],ROOT.RooFit.Rename("signal__JERUp"))
+            getattr(w,'import')(hSig_Syst_DataHist['JERDown'],ROOT.RooFit.Rename("signal__JERDown"))
         if args.decoBkg:
             getattr(w,'import')(background_deco,ROOT.RooCmdArg())
         else:
             getattr(w,'import')(background,ROOT.RooCmdArg())
         getattr(w,'import')(background_norm,ROOT.RooCmdArg())
-        getattr(w,'import')(rooDataHist,RooFit.Rename("data_obs"))
+        getattr(w,'import')(rooDataHist,ROOT.RooFit.Rename("data_obs"))
         w.Print()
         w.writeToFile(os.path.join(args.output_path,wsName))
 

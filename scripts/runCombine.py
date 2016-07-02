@@ -82,15 +82,17 @@ def main():
 
     parser.add_argument("--noSyst", dest="noSyst", default=False, action="store_true", help="Run without systematic uncertainties")
 
+    parser.add_argument("--freezeNuisances", dest="freezeNuisances", help="Comma-separated list of nuisance paramaters to freeze")
+
     parser.add_argument("--noHint", dest="noHint", default=False, action="store_true", help="Do not run the hint method")
 
     parser.add_argument("--signif", dest="signif", default=False, action="store_true", help="Calculate significance instead of limits")
 
-    parser.add_argument("--fitStrategy", dest="fitStrategy", type=int, help="Fit strategy (default: %(default).1f)")
+    parser.add_argument("--fitStrategy", dest="fitStrategy", type=int, default=1, help="Fit strategy (default: %(default)i)")
 
     parser.add_argument("--condor", dest="condor", default=False, action="store_true", help="Batch process using Condor")
 
-    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the input and output file names (default: %(default)s)")
+    parser.add_argument("--postfix", dest="postfix", default='', help="Postfix for the input and output file names (default: \"%(default)s\")")
 
     mass_group = parser.add_mutually_exclusive_group(required=True)
     mass_group.add_argument("--mass",
@@ -141,10 +143,12 @@ def main():
     options = ''
     if args.signif:
         options = options + ' --signif'
-    if args.fitStrategy:
+    if args.fitStrategy != 1:
         options = options + ' --minimizerStrategy %i'%(args.fitStrategy)
     if args.noSyst:
         options = options + ' --systematics 0'
+    if args.freezeNuisances:
+        options = options + ' --freezeNuisances %s'%(args.freezeNuisances)
     if method != 'ProfileLikelihood' and method != 'MaxLikelihoodFit' and args.rMax == None and not args.noHint and not args.signif:
         options = options + ' --hintMethod ProfileLikelihood'
     if method == 'HybridNew' and args.toysH != None:
