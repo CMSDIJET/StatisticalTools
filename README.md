@@ -112,7 +112,7 @@ Another essential ingredient for the statistical analysis are datacards and corr
 
 ./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qg_13TeV_PU30_Spring15.root -f qg -o datacards -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2
 
-./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qg_13TeV_Phys14Spring15Mix.root -f qg -o datacards -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2
+./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qq_13TeV_Phys14Spring15Mix.root -f qq -o datacards -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2
 ```
 
 For more command-line options, run
@@ -129,7 +129,7 @@ For Bayesian limits a separate set of datacards and RooFit workspaces is needed 
 
 ./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qg_13TeV_PU30_Spring15.root -f qg -o datacards_decoBkg -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2 --decoBkg
 
-./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qg_13TeV_Phys14Spring15Mix.root -f qg -o datacards_decoBkg -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2 --decoBkg
+./scripts/createDatacards.py --inputData inputs/histo_data_mjj_Run2015D_silverJSON_2445pb-1_JEC_Summer15_25nsV6_clean.root --dataHistname h_dat --inputSig inputs/ResonanceShapes_qq_13TeV_Phys14Spring15Mix.root -f qq -o datacards_decoBkg -l 2445 --lumiUnc 0.05 --jesUnc 0.02 --jerUnc 0.1 --massrange 1500 7200 100 --runFit --p1 7.46697e+00 --p2 6.37033e+00 --p3 2.14709e-01 --massMin 1181 --massMax 10430 --fitStrategy 2 --decoBkg
 ```
 
 ### Limit calculation
