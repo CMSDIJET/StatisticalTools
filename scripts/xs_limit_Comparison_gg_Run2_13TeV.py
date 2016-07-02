@@ -111,7 +111,7 @@ if syst:
 graph_exp_2sigma = TGraph(len(masses_exp),masses_exp,xs_exp_limits_2sigma)
 graph_exp_2sigma.SetFillColor(kYellow)
 graph_exp_2sigma.GetXaxis().SetTitle("gg resonance mass [GeV]")
-graph_exp_2sigma.GetYaxis().SetTitle("#sigma #times #it{B} #times #it{A} [pb]")
+graph_exp_2sigma.GetYaxis().SetTitle("#sigma #it{B} #it{A} [pb]")
 graph_exp_2sigma.GetYaxis().SetTitleOffset(1.1)
 graph_exp_2sigma.GetYaxis().SetRangeUser(1e-02,1e+03)
 #graph_exp_2sigma.GetXaxis().SetNdivisions(1005)
