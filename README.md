@@ -52,20 +52,32 @@ Note that this feature is still **experimental**.
 
 All of the above steps need to be done only once.
 
-**UPDATE:** As of July 16, 2015 only a private instance of the `StatisticalTools` repository hosted by CERN GitLab is being updated. Here are the steps you should follow to get the latest updates:
+**NOTE:** Branches containing any non-public data and/or results are stored in a private instance of the `StatisticalTools` repository hosted by CERN GitLab. Here are the steps you should follow to get private branches:
 
 ```
 cd StatisticalTools
 git remote add cms-internal ssh://git@gitlab.cern.ch:7999/CMSDIJET/StatisticalTools.git
 git fetch cms-internal
-git pull --ff-only cms-internal master
-cd ../
 ```
 
-Alternatively, you can start by directly cloning the private repository
+at which point you can either update your current branch (in case it contains any private data)
 
 ```
-git clone ssh://git@gitlab.cern.ch:7999/CMSDIJET/StatisticalTools.git StatisticalTools
+git pull --ff-only cms-internal <current_branch>
+```
+
+or can switch to another (possibly private) branch
+
+```
+git checkout <new_branch>
+```
+
+where `<new_branch>` is the name of the branch to which you are switching.
+
+Alternatively, you can start by directly cloning from the private repository
+
+```
+git clone -b <branch> ssh://git@gitlab.cern.ch:7999/CMSDIJET/StatisticalTools.git StatisticalTools
 ```
 
 ## Limit and significance calculation
@@ -77,6 +89,7 @@ Before we can compute limits or significances, we need signal resonance shapes. 
 To produce the resonance shapes, go to the `DijetShapeInterpolator` package
 
 ```
+cd ../
 cd DijetShapeInterpolator
 ```
 
